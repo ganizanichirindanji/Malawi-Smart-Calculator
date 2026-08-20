@@ -129,7 +129,7 @@ function CalculatorAppContent() {
     { id: 'cubic', label: 'Cubic Solver', shortLabel: 'Cubic', icon: <Variable size={18} />, category: 'Solvers' },
     { id: 'linear', label: 'Linear Solver', shortLabel: 'Linear', icon: <Variable size={18} />, category: 'Solvers' },
     { id: 'fractions', label: 'Fractions Engine', shortLabel: 'Fractions', icon: <Divide size={18} />, category: 'Arithmetic' },
-    { id: 'conversions', label: 'Angle Conversions', shortLabel: 'Conversions', icon: <RefreshCw size={18} />, category: 'Arithmetic' },
+    { id: 'conversions', label: 'Unit Converter', shortLabel: 'Converter', icon: <RefreshCw size={18} />, category: 'Arithmetic' },
   ];
 
   const renderContent = () => {

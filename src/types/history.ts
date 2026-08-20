@@ -22,8 +22,9 @@ export interface HistoryItem {
     datasetInput?: string;
     fractionInput?: string;
     conversionValue?: string;
-    conversionFrom?: 'deg' | 'rad';
-    conversionTo?: 'deg' | 'rad';
+    conversionCategory?: string;
+    conversionFrom?: string;
+    conversionTo?: string;
     linearMode?: 'slope-intercept' | 'two-points';
   };
 }

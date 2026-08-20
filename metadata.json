@@ -1,6 +1,6 @@
 {
   "name": "Malawi Scientific Calculator",
-  "description": "Offline-ready, mobile and tablet optimized Scientific Calculator suite featuring arithmetic, statistics, polynomial & linear solvers, fraction engine, and angle conversions.",
+  "description": "Offline-ready, mobile and tablet optimized Scientific Calculator suite featuring arithmetic, statistics, polynomial & linear solvers, fraction engine, and comprehensive unit conversions (Mass, Length, Temperature, Weight, Area, Volume, Speed, Pressure, Energy, Power, Digital Data, Angle).",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

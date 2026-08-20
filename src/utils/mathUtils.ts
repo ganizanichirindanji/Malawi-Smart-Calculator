@@ -739,3 +739,239 @@ export const simplifyFraction = (input: string): { simplified: string, decimal: 
   }
 };
 
+// ==========================================
+// Answer Notation Formatters (Scientific / Full Digits / Eng / Fraction)
+// ==========================================
+
+export type NotationMode = 'full' | 'sci' | 'eng' | 'fraction';
+
+export interface AnswerNotations {
+  isNumeric: boolean;
+  numericValue: number | null;
+  fullDigits: string;
+  scientific: string;
+  scientificRaw: string;
+  engineering: string;
+  engineeringRaw: string;
+  fraction: string | null;
+  mixedFraction: string | null;
+  bestDisplay: string;
+}
+
+export const toSuperscript = (strOrNum: string | number): string => {
+  const map: Record<string, string> = {
+    '-': '⁻',
+    '+': '⁺',
+    '0': '⁰',
+    '1': '¹',
+    '2': '²',
+    '3': '³',
+    '4': '⁴',
+    '5': '⁵',
+    '6': '⁶',
+    '7': '⁷',
+    '8': '⁸',
+    '9': '⁹'
+  };
+  return String(strOrNum).split('').map(ch => map[ch] || ch).join('');
+};
+
+/**
+ * Converts any number or numeric string to its full decimal digit representation
+ * without scientific exponent notation (e.g. 2.99792458e8 -> 299792458, 1.602e-19 -> 0.0000000000000000001602)
+ */
+export const formatToFullDigits = (input: number | string, maxDecimals = 35): string => {
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    if (trimmed === 'Error' || trimmed === 'Infinity' || trimmed === '-Infinity' || trimmed.includes('Undefined') || trimmed.includes('Domain Error')) {
+      return trimmed;
+    }
+  }
+
+  const num = typeof input === 'number' ? input : Number(input);
+  if (!isFinite(num) || isNaN(num)) return String(input);
+  if (num === 0) return '0';
+
+  const str = num.toString();
+  if (!str.includes('e') && !str.includes('E')) {
+    return str;
+  }
+
+  const [coefficientStr, exponentStr] = str.toLowerCase().split('e');
+  const exponent = parseInt(exponentStr, 10);
+  const isNegative = coefficientStr.startsWith('-');
+  const unsignedCoeff = isNegative ? coefficientStr.slice(1) : coefficientStr;
+  const [integerPart, decimalPart = ''] = unsignedCoeff.split('.');
+
+  if (exponent > 0) {
+    if (decimalPart.length <= exponent) {
+      const zeros = '0'.repeat(exponent - decimalPart.length);
+      return `${isNegative ? '-' : ''}${integerPart}${decimalPart}${zeros}`;
+    } else {
+      const newInt = integerPart + decimalPart.slice(0, exponent);
+      const newDec = decimalPart.slice(exponent);
+      return `${isNegative ? '-' : ''}${newInt}.${newDec}`;
+    }
+  } else {
+    const absExp = Math.abs(exponent);
+    const zeros = '0'.repeat(absExp - 1);
+    const fullDec = `${zeros}${integerPart}${decimalPart}`;
+    const trimmedDec = fullDec.slice(0, maxDecimals).replace(/0+$/, '');
+    return `${isNegative ? '-' : ''}0.${trimmedDec || '0'}`;
+  }
+};
+
+/**
+ * Converts a number to standard Scientific Notation: a × 10^b (1 <= |a| < 10)
+ */
+export const formatToScientificNotation = (input: number | string, precision = 12): { formatted: string; raw: string } => {
+  const num = typeof input === 'number' ? input : Number(input);
+  if (!isFinite(num) || isNaN(num)) return { formatted: String(input), raw: String(input) };
+  if (num === 0) return { formatted: '0 × 10⁰', raw: '0e0' };
+
+  const expStr = num.toExponential();
+  const [coeffStr, expValStr] = expStr.split('e');
+  const exponent = parseInt(expValStr, 10);
+  const coeffNum = parseFloat(coeffStr);
+  const cleanCoeff = cleanFloat(coeffNum, precision).toString();
+  const supExp = toSuperscript(exponent);
+
+  return {
+    formatted: `${cleanCoeff} × 10${supExp}`,
+    raw: `${cleanCoeff}e${exponent >= 0 ? '+' : ''}${exponent}`
+  };
+};
+
+/**
+ * Converts a number to Engineering Notation: a × 10^(3k)
+ */
+export const formatToEngineeringNotation = (input: number | string, precision = 12): { formatted: string; raw: string } => {
+  const num = typeof input === 'number' ? input : Number(input);
+  if (!isFinite(num) || isNaN(num)) return { formatted: String(input), raw: String(input) };
+  if (num === 0) return { formatted: '0 × 10⁰', raw: '0e0' };
+
+  const exp = Math.floor(Math.log10(Math.abs(num)));
+  const engExp = Math.floor(exp / 3) * 3;
+  const coeff = num / Math.pow(10, engExp);
+  const cleanCoeff = cleanFloat(coeff, precision).toString();
+  const supExp = toSuperscript(engExp);
+
+  return {
+    formatted: `${cleanCoeff} × 10${supExp}`,
+    raw: `${cleanCoeff}e${engExp >= 0 ? '+' : ''}${engExp}`
+  };
+};
+
+/**
+ * Parses and computes all representations for a result string
+ */
+export const getAllAnswerNotations = (resultStr: string | null | undefined): AnswerNotations => {
+  if (!resultStr || resultStr === 'Error' || resultStr.includes('Undefined') || resultStr.includes('Domain Error')) {
+    return {
+      isNumeric: false,
+      numericValue: null,
+      fullDigits: resultStr || '0',
+      scientific: resultStr || '0',
+      scientificRaw: resultStr || '0',
+      engineering: resultStr || '0',
+      engineeringRaw: resultStr || '0',
+      fraction: null,
+      mixedFraction: null,
+      bestDisplay: resultStr || '0'
+    };
+  }
+
+  // Handle boolean results
+  if (resultStr === 'true' || resultStr === 'false') {
+    return {
+      isNumeric: false,
+      numericValue: null,
+      fullDigits: resultStr,
+      scientific: resultStr,
+      scientificRaw: resultStr,
+      engineering: resultStr,
+      engineeringRaw: resultStr,
+      fraction: null,
+      mixedFraction: null,
+      bestDisplay: resultStr
+    };
+  }
+
+  const num = Number(resultStr);
+  if (isNaN(num) || !isFinite(num)) {
+    return {
+      isNumeric: false,
+      numericValue: null,
+      fullDigits: resultStr,
+      scientific: resultStr,
+      scientificRaw: resultStr,
+      engineering: resultStr,
+      engineeringRaw: resultStr,
+      fraction: null,
+      mixedFraction: null,
+      bestDisplay: resultStr
+    };
+  }
+
+  const fullDigits = formatToFullDigits(num);
+  const sci = formatToScientificNotation(num);
+  const eng = formatToEngineeringNotation(num);
+
+  let fracRatio: string | null = null;
+  let fracMixed: string | null = null;
+
+  try {
+    const f = math.fraction(num) as Fraction;
+    const n = Math.abs(Number(f.n));
+    const d = Number(f.d);
+    const s = Number(f.s);
+    if (d > 1 && d <= 1000000) {
+      const sign = s < 0 ? '-' : '';
+      fracRatio = `${sign}${n}/${d}`;
+      if (n > d) {
+        const whole = Math.floor(n / d);
+        const rem = n % d;
+        if (rem > 0) {
+          fracMixed = `${sign}${whole} ${rem}/${d}`;
+        }
+      }
+    }
+  } catch {}
+
+  return {
+    isNumeric: true,
+    numericValue: num,
+    fullDigits,
+    scientific: sci.formatted,
+    scientificRaw: sci.raw,
+    engineering: eng.formatted,
+    engineeringRaw: eng.raw,
+    fraction: fracRatio,
+    mixedFraction: fracMixed,
+    bestDisplay: resultStr
+  };
+};
+
+/**
+ * Returns formatted string according to selected notation mode
+ */
+export const formatAnswerByMode = (resultStr: string | null | undefined, mode: NotationMode): string => {
+  if (!resultStr) return '0';
+  const notations = getAllAnswerNotations(resultStr);
+  if (!notations.isNumeric) return resultStr;
+
+  switch (mode) {
+    case 'full':
+      return notations.fullDigits;
+    case 'sci':
+      return notations.scientific;
+    case 'eng':
+      return notations.engineering;
+    case 'fraction':
+      return notations.mixedFraction || notations.fraction || notations.fullDigits;
+    default:
+      return notations.fullDigits;
+  }
+};
+
+

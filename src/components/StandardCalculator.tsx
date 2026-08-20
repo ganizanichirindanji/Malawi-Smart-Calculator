@@ -15,7 +15,7 @@ import {
   Zap,
   BookOpen
 } from 'lucide-react';
-import { calculateExpression, SCIENTIFIC_CONSTANTS, ScientificConstant } from '../utils/mathUtils';
+import { calculateExpression, SCIENTIFIC_CONSTANTS, ScientificConstant, NotationMode, getAllAnswerNotations, formatAnswerByMode } from '../utils/mathUtils';
 import { useHistory } from '../context/HistoryContext';
 
 interface Props {
@@ -26,6 +26,13 @@ export default function StandardCalculator({ mode }: Props) {
   const { addHistoryEntry, recalledItem, setIsDrawerOpen } = useHistory();
   const [display, setDisplay] = useState('');
   const [result, setResult] = useState<string | null>(null);
+  const [notationMode, setNotationMode] = useState<NotationMode>(() => {
+    try {
+      return (localStorage.getItem('malawi_calc_notation_mode') as NotationMode) || 'full';
+    } catch {
+      return 'full';
+    }
+  });
   const [lastAns, setLastAns] = useState<string>(() => {
     try {
       return localStorage.getItem('malawi_calc_last_ans') || '0';
@@ -55,6 +62,33 @@ export default function StandardCalculator({ mode }: Props) {
   const [constantsSearch, setConstantsSearch] = useState('');
   const [selectedConstantCat, setSelectedConstantCat] = useState<'all' | 'universal' | 'physics' | 'chemistry' | 'math'>('all');
   const [copiedConstantId, setCopiedConstantId] = useState<string | null>(null);
+
+  // Compute all notation representations for the active result
+  const answerNotations = getAllAnswerNotations(result);
+  const displayedResult = result !== null ? formatAnswerByMode(result, notationMode) : null;
+
+  const handleNotationModeChange = (newMode: NotationMode) => {
+    vibrate();
+    setNotationMode(newMode);
+    try {
+      localStorage.setItem('malawi_calc_notation_mode', newMode);
+    } catch {}
+  };
+
+  const cycleNotationMode = () => {
+    vibrate();
+    setNotationMode(prev => {
+      let next: NotationMode = 'full';
+      if (prev === 'full') next = 'sci';
+      else if (prev === 'sci') next = answerNotations.fraction ? 'fraction' : 'eng';
+      else if (prev === 'fraction') next = 'eng';
+      else if (prev === 'eng') next = 'full';
+      try {
+        localStorage.setItem('malawi_calc_notation_mode', next);
+      } catch {}
+      return next;
+    });
+  };
 
   // Handle global history recall
   useEffect(() => {
@@ -145,7 +179,7 @@ export default function StandardCalculator({ mode }: Props) {
   };
 
   const copyResult = () => {
-    const textToCopy = result !== null ? result : display;
+    const textToCopy = displayedResult !== null ? displayedResult : (result !== null ? result : display);
     if (textToCopy) {
       navigator.clipboard?.writeText(textToCopy);
       setCopied(true);
@@ -356,6 +390,12 @@ export default function StandardCalculator({ mode }: Props) {
       second: { label: 'Ans', action: () => append('Ans'), desc: 'Previous Answer' },
       category: 'all'
     },
+    { 
+      id: 'sd_switch',
+      primary: { label: 'S ⇄ D', action: cycleNotationMode, desc: 'Switch Answer between Full Digits & Standard Scientific Notation' },
+      second: { label: 'ENG/Frac', action: () => handleNotationModeChange(notationMode === 'eng' ? 'fraction' : 'eng'), desc: 'Toggle Engineering or Fraction Notation' },
+      category: 'all'
+    },
   ];
 
   const [showGuide, setShowGuide] = useState(false);
@@ -398,9 +438,9 @@ export default function StandardCalculator({ mode }: Props) {
     <div className="flex flex-col w-full max-w-4xl mx-auto space-y-2.5 sm:space-y-3">
       {/* Primary Display & Result Card (Condensed & Integrated) */}
       <div className="bg-slate-950 rounded-2xl shadow-lg overflow-hidden border border-slate-800">
-        {/* Header toolbar within display (DEG/RAD, History toggle, Copy, Guide) */}
-        <div className="px-3.5 py-2 bg-slate-900/90 border-b border-slate-800/80 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        {/* Header toolbar within display (DEG/RAD, History toggle, Notation Toggle, Copy, Guide) */}
+        <div className="px-3.5 py-2 bg-slate-900/90 border-b border-slate-800/80 flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             {mode === 'scientific' ? (
               <div className="flex items-center bg-slate-800 p-0.5 rounded-md border border-slate-700/60">
                 <button
@@ -431,12 +471,29 @@ export default function StandardCalculator({ mode }: Props) {
                 Standard
               </span>
             )}
+
+            {/* S ⇄ D Answer Notation Switcher Pill in Top Bar */}
+            {mode === 'scientific' && answerNotations.isNumeric && (
+              <button
+                type="button"
+                onClick={cycleNotationMode}
+                title="Click to toggle answer notation (Full Digits ⇄ Standard Scientific 10ⁿ ⇄ Eng ⇄ Frac)"
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-950/90 hover:bg-blue-900/90 text-blue-300 border border-blue-700/60 text-[10px] font-bold transition-all shadow-2xs active:scale-95"
+              >
+                <ArrowRightLeft size={11} className="text-blue-400" />
+                <span>S ⇄ D</span>
+                <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-blue-800/80 text-white">
+                  {notationMode === 'full' ? 'Full Digits' : notationMode === 'sci' ? 'Sci (10ⁿ)' : notationMode === 'eng' ? 'Eng (10³ⁿ)' : 'Fraction'}
+                </span>
+              </button>
+            )}
+
             <span className="text-[10px] font-mono font-medium text-slate-400 px-1.5 py-0.5 rounded bg-slate-800/60">
               Ans = {lastAns}
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 ml-auto">
             {mode === 'scientific' && (
               <button
                 type="button"
@@ -462,7 +519,7 @@ export default function StandardCalculator({ mode }: Props) {
             <button
               type="button"
               onClick={copyResult}
-              title="Copy calculation or result"
+              title="Copy calculation or formatted result"
               className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
             >
               {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
@@ -471,8 +528,8 @@ export default function StandardCalculator({ mode }: Props) {
           </div>
         </div>
 
-        {/* Main Display Area (Compact Height) */}
-        <div className="px-4 py-3 sm:py-3.5 text-right space-y-1 bg-gradient-to-b from-slate-950 to-slate-900">
+        {/* Main Display Area */}
+        <div className="px-4 py-3 sm:py-3.5 text-right space-y-1.5 bg-gradient-to-b from-slate-950 to-slate-900">
           <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest">
             <span>Expression</span>
             {mode === 'scientific' && (
@@ -486,11 +543,112 @@ export default function StandardCalculator({ mode }: Props) {
             {display || <span className="text-slate-600">0</span>}
           </div>
 
-          <div className="pt-1.5 border-t border-slate-800/60 flex items-center justify-between">
-            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Result</span>
-            <div className="text-2xl sm:text-3xl font-mono font-bold text-white break-all drop-shadow-xs selection:bg-blue-800">
-              {result !== null ? result : (display ? '—' : '0')}
+          <div className="pt-2 border-t border-slate-800/60 space-y-1">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Result</span>
+                
+                {/* Segmented Notation Mode Pills in Result Area */}
+                {mode === 'scientific' && answerNotations.isNumeric && (
+                  <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-800 p-0.5 rounded-md">
+                    <button
+                      type="button"
+                      onClick={() => handleNotationModeChange('full')}
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-all ${
+                        notationMode === 'full'
+                          ? 'bg-blue-600 text-white font-bold shadow-xs'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Show full value digits without scientific exponent"
+                    >
+                      Full Digits
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleNotationModeChange('sci')}
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-all ${
+                        notationMode === 'sci'
+                          ? 'bg-blue-600 text-white font-bold shadow-xs'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Show standard scientific notation (a × 10ⁿ)"
+                    >
+                      Sci (10ⁿ)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleNotationModeChange('eng')}
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-all ${
+                        notationMode === 'eng'
+                          ? 'bg-blue-600 text-white font-bold shadow-xs'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Show engineering notation (a × 10³ⁿ)"
+                    >
+                      Eng
+                    </button>
+                    {answerNotations.fraction && (
+                      <button
+                        type="button"
+                        onClick={() => handleNotationModeChange('fraction')}
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-all ${
+                          notationMode === 'fraction'
+                            ? 'bg-blue-600 text-white font-bold shadow-xs'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title="Show simplified fraction (p/q)"
+                      >
+                        Fraction
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* S ⇄ D Action Button */}
+              {mode === 'scientific' && answerNotations.isNumeric && (
+                <button
+                  type="button"
+                  onClick={cycleNotationMode}
+                  className="text-[10px] text-blue-400 hover:text-blue-300 font-mono font-medium flex items-center gap-1 transition-colors px-1.5 py-0.5 rounded hover:bg-slate-800/80"
+                  title="Switch between Full Value Digits and Standard Scientific Form"
+                >
+                  <ArrowRightLeft size={11} />
+                  <span>Switch (S ⇄ D)</span>
+                </button>
+              )}
             </div>
+
+            {/* Main Result Display */}
+            <div className="text-2xl sm:text-3xl font-mono font-bold text-white break-all drop-shadow-xs selection:bg-blue-800">
+              {displayedResult !== null ? displayedResult : (display ? '—' : '0')}
+            </div>
+
+            {/* Alternate format quick subtitle */}
+            {mode === 'scientific' && answerNotations.isNumeric && result !== null && (
+              <div className="flex items-center justify-end gap-2 text-[10px] sm:text-[11px] font-mono text-slate-400 pt-0.5">
+                {notationMode === 'sci' && (
+                  <span className="text-slate-400 truncate">
+                    = <span className="text-slate-200 font-semibold">{answerNotations.fullDigits}</span> <span className="text-slate-500">(Full Digits)</span>
+                  </span>
+                )}
+                {notationMode === 'full' && (
+                  <span className="text-slate-400 truncate">
+                    = <span className="text-blue-300 font-semibold">{answerNotations.scientific}</span> <span className="text-slate-500">(Standard Notation)</span>
+                  </span>
+                )}
+                {notationMode === 'eng' && (
+                  <span className="text-slate-400 truncate">
+                    = <span className="text-blue-300 font-semibold">{answerNotations.scientific}</span> <span className="text-slate-500">(Sci)</span> • <span className="text-slate-200">{answerNotations.fullDigits}</span> <span className="text-slate-500">(Full)</span>
+                  </span>
+                )}
+                {notationMode === 'fraction' && (
+                  <span className="text-slate-400 truncate">
+                    = <span className="text-slate-200 font-semibold">{answerNotations.fullDigits}</span> <span className="text-slate-500">(Decimal)</span>
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -901,6 +1059,22 @@ export default function StandardCalculator({ mode }: Props) {
             </div>
 
             <div className="p-5 overflow-y-auto space-y-4 text-xs text-slate-600">
+              <div className="bg-blue-50 border border-blue-200/80 rounded-xl p-3">
+                <p className="font-bold text-blue-950 mb-1 flex items-center gap-1.5 text-xs">
+                  <ArrowRightLeft size={14} className="text-blue-600" />
+                  <span>Answer Notation Switcher (S ⇄ D)</span>
+                </p>
+                <p className="text-[11px] text-blue-900/90 leading-relaxed mb-2">
+                  Switch the calculated answer between <strong>Full Value Decimal Digits</strong>, <strong>Standard Scientific Notation (a × 10ⁿ)</strong>, <strong>Engineering Form (a × 10³ⁿ)</strong>, and <strong>Fractions</strong> using the <code className="bg-white px-1 py-0.5 rounded border border-blue-200 font-mono font-bold text-blue-800">S ⇄ D</code> key or the quick pills next to the result.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 font-mono text-[10px] bg-white p-2 rounded-lg border border-blue-100 text-slate-700">
+                  <div>• <strong>Full Digits:</strong> 299792458</div>
+                  <div>• <strong>Standard Sci:</strong> 2.99792458 × 10⁸</div>
+                  <div>• <strong>Small Num:</strong> 0.000125 ⇄ 1.25 × 10⁻⁴</div>
+                  <div>• <strong>Fractions:</strong> 0.75 ⇄ 3/4</div>
+                </div>
+              </div>
+
               <div>
                 <p className="font-semibold text-slate-800 mb-1 flex items-center gap-1">
                   <Atom size={14} className="text-amber-600" />
