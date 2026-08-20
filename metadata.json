@@ -1,0 +1,8 @@
+{
+  "name": "Malawi Scientific Calculator",
+  "description": "Offline-ready, mobile and tablet optimized Scientific Calculator suite featuring arithmetic, statistics, polynomial & linear solvers, fraction engine, and angle conversions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

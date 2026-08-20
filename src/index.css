@@ -1,0 +1,86 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  
+  --color-brand-bg: #f8fafc;
+  --color-brand-card: #ffffff;
+  --color-brand-border: #e2e8f0;
+  --color-brand-text: #0f172a;
+  --color-brand-accent: #2563eb;
+}
+
+@layer base {
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+  }
+
+  html, body {
+    height: 100%;
+    height: 100dvh;
+    @apply bg-slate-900 text-brand-text font-sans antialiased;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+
+.safe-top {
+  padding-top: max(1rem, env(safe-area-inset-top));
+}
+
+.safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.calculator-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.btn-calc {
+  @apply flex items-center justify-center p-3.5 sm:p-4 rounded-xl font-medium transition-all active:scale-95 touch-manipulation select-none;
+  min-height: 44px;
+}
+
+.btn-num {
+  @apply bg-white border border-brand-border hover:bg-slate-50 text-slate-900 shadow-xs;
+}
+
+.btn-op {
+  @apply bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80;
+}
+
+.btn-accent {
+  @apply bg-brand-accent text-white hover:bg-blue-700 shadow-sm shadow-blue-500/20;
+}
+
+.btn-danger {
+  @apply bg-red-50 text-red-600 hover:bg-red-100 border border-red-100;
+}
+
+/* Smooth custom scrollbars for tablet and mobile panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Malawi Scientific Calculator",
+  "short_name": "Malawi Calc",
+  "description": "Offline-ready, full-mode scientific calculator for mobile, tablets, and desktop.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "categories": ["education", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
